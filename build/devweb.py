@@ -26,7 +26,8 @@ def _start():
     addr = socket.getaddrinfo('0.0.0.0', 8267)[0][-1]
     sock.bind(addr)
     sock.listen(1)
-    html = open('/more/www/devrepl-min.html.gz').read()
+    www = __file__.replace('devweb.py','')
+    html = open(www + 'devrepl-min.html.gz').read()
     print('devweb listening on', addr)
   
     while sock != None:

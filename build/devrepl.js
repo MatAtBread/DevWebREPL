@@ -574,7 +574,9 @@ for i in os.listdir():
         while (!mPyDevice)
             await raiseError("Not connected");
         const cwd = ui('cwd').textContent;
-        const file = (cwd === '/' ? '' : cwd) + '/' + ui('send-file-name').value;
+        let file = (cwd === '/' ? '' : cwd) + '/' + ui('send-file-name').value;
+        if (file.endsWith("/"))
+            file = file.substring(0, file.length - 1);
         if (confirm(`Delete ${file} from device?`)) {
             await mPyDevice.executeCode(`import os\nos.unlink('${file}')\n`);
             await populateFileList();
