@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "minify": "^8.0.4",
+    "typescript": "^4.6.2"
+  },
+  "scripts": {
+    "build": "tsc && node build.mjs",
+    "postinstall": "npm run build"
+  },
+  "engines": {
+    "node": "^14.16"
+  }
+}

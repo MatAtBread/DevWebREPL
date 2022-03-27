@@ -1,0 +1,10 @@
+{
+    "files": ["./devrepl.ts"],
+    "compilerOptions": {
+        "lib": ["DOM","ES2020"],
+        "strict": true,
+        "target": "ES2022",
+        "removeComments": true,
+        "outDir": "build"
+    }
+}

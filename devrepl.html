@@ -1,0 +1,179 @@
+<html>
+
+<head>
+  <title>MicroPython WebREPL</title>
+  <style>
+    body {
+      background-color: #666;
+      font-family: sans-serif;
+    }
+
+    .python {
+      display: none;
+    }
+    #term {
+      background-color: white;
+      font-family: monospace;
+      width: 100%;
+      height: 10em;
+      overflow-y: scroll;
+    }
+
+    #controls {
+      position: relative;
+      top: -4em;
+      float: right;
+    }
+
+    #controls>* {
+      display: block;
+      margin: 0.3em;
+    }
+
+    .codeArea {
+      border-top: 0px;
+      display: block;
+      background-color: #333;
+      color: greenyellow;
+      font-family: monospace;
+      width: 100%;
+      height: calc(100% - 24em);
+      overflow-y: scroll;
+    }
+
+    #pos {
+      font-family: monospace;
+      float: right;
+      color: #dd6;
+    }
+
+    #cwd {
+      width: fit-content;
+      color: black;
+      background-color: white;
+      display: inline-block;
+      margin: 0em;
+      padding: 0px 4px;
+      border-width: 0px;
+      font-size: 0.9em;
+    }
+
+    #processing {
+      padding: 0em 0.3em;
+      margin-right: 1em;
+      float: right;
+    }
+
+    #file-boxes {
+      position: absolute;
+      bottom: 0.5em;
+      width: 99%;
+    }
+
+    .file-box {
+      margin: 4px;
+      padding: 4px;
+      background: #aaa;
+    }
+
+    .popup {
+      position: absolute;
+      top: 3em;
+      left: 5em;
+      border: 1px solid;
+      padding: 1em;
+      box-shadow: 3px 3px 3px #aaa;
+      background-color: white;
+      overflow: scroll;
+      min-width: 10em;
+      min-height: 3em;
+      max-width: calc(100% - 10em);
+      max-height: calc(100% - 8em);
+    }
+
+    .close {
+      float: right;
+      position: relative;
+      top: -1em;
+      right: -0.8em;
+      cursor: pointer;
+      color: #A00;
+    }
+
+    #tabs .close {
+      padding-left: 0.3em;
+      top: -0.05em;
+      right: -0.2em;
+    }
+
+    #tabs .close:hover {
+      color: red;
+    }
+
+    #tabs {
+      display: inline-block;
+      vertical-align: middle;
+      height: 1.3em;
+      max-height: 1.3em;
+      overflow-x: hidden;
+      white-space: nowrap;
+      width: 99%;
+    }
+
+    #tabs>.selected {
+      background-color: #333;
+      color: white;
+    }
+
+    #tabs>* {
+      display: inline-block;
+      color: #ccc;
+      padding: 0.2em 0.5em;
+      font-size: 0.8em;
+      margin-right: 0.5em;
+      cursor: default;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="height: 2em;">
+    <input type="text" name="webrepl_url" id="url" value="ws://192.168.0.128:8266/" />
+    <input type="password" id="password" value="" />
+    <input type="submit" id="button" value="Connect" onclick="startConnect()" />
+    <div id="processing" style="display: none;color:yellow;">processing...</div>
+  </div>
+  <div id="tabs"><button style="color: black" onclick="createTab()">+</button></div>
+  <textarea class="codeArea" spellcheck="false" id="code"></textarea>
+  <div>
+    <button onclick="runCode()">Run Code</button>
+    <button onclick="getHelp()">Help</button>
+    <div id="pos"></div>
+  </div>
+  <pre id="term">
+</pre>
+  <div id="controls">
+    <button onclick="ui('term').innerHTML=''">clear</button>
+    <button onclick="ControlC()">Ctr-C</button>
+  </div>
+  <div id="file-boxes">
+    <div class="file-box">
+      <span>Load a local file:</span>
+      (send to device<input type="checkbox" id="file-to-device">)<input type="file" id="load-file" />
+    </div>
+
+    <div class="file-box">
+      <span>Device files:</span>
+      <span id="cwd"></span>
+      <select id="device-files" onchange="navigateFiles()"></select>
+      <input type="button" value="Get from device" onclick="getFileFromDevice(ui('device-files').value.substring(1));" />
+      &#10132;<span style="padding: 0em 1em">terminal</span> &#10132;
+      <input type="button" value="Send to device" id="put-file-button" onclick="saveFileToDevice(ui('send-file-name').value)" />
+      <input type="text" id="send-file-name">
+      <input type="button" value="Delete from device" id="delete-file-button" onclick="deleteFile()" />
+    </div>
+  </div>
+</body>
+
+<script src="./build/devrepl.js"></script>
+</html>
