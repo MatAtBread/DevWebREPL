@@ -307,7 +307,6 @@ function connect(url: string, password: string) {
         processing.style.display =  state ? 'inline-block' : 'none';
       });
       const res = await mPyDevice.waitFor(["WebREPL connected","Access denied"], Wait.Connect);
-      debugger;
       if (res.found === 1) {
         ws.close();
         alert("Incorrect password. Please try again");
@@ -441,15 +440,16 @@ function onload() {
 
   lastTab = 0;
   for (const [k, v] of Object.entries(localStorage)) {
-    if (k.startsWith('tab:')) {
-      if (k.startsWith('tab:Unsaved'))
+    const id = k.split(':');
+    if (id[0] === 'tab' && id[1]) {
+      if (id[1] === 'none' && id[2]?.startsWith('Unsaved'))
         lastTab += 1;
-      createTab(k.slice(4), v);
+      createTab(id[1] in icons ? id[1] as 'repl'|'local'|'none' : 'none', id[2], v);
     }
   }
   if (lastTab === 0) {
     lastTab = 1;
-    createTab();
+    createTab('none');
     code.setValue(localStorage['code'] || '');
   }
 
@@ -476,17 +476,18 @@ function onload() {
     reader.onload = async function (e: Event) {
       if (!this.result)
         throw new Error("Failed to load file");
+      const strResult = this.result instanceof ArrayBuffer ? new TextDecoder().decode(this.result) : this.result;
       if (ui('file-to-device').checked) {
         const dest = prompt("File name on device?",f.name);
         if (dest !== null) {
           await mPyDevice?.putFile(dest,this.result)
-          createTab('\uD83C\uDC61 ' + dest, this.result.toString());
+          createTab('repl',dest, strResult);
         }
       } else {
-        createTab('\uD83D\uDDA5 ' + f.name, this.result.toString());
+        createTab('local', f.name, strResult);
       }
     };
-    reader.readAsText(f);
+    reader.readAsArrayBuffer(f);
   }, false);
 };
 
@@ -597,9 +598,26 @@ async function deleteFile() {
   if (file.endsWith("/"))
     file = file.substring(0,file.length-1);
   if (confirm(`Delete ${file} from device?`)) {
-    await mPyDevice.executeCode(`import os\nos.unlink('${file}')\n`);
-    await populateFileList();
+    const result = await mPyDevice.executeCode(`import os\nos.unlink('${file}')\n`);
+    if (result)
+      popup(result);
+    else
+      await populateFileList();
   }
+}
+
+async function createDirectory() {
+  while (!mPyDevice)
+    await raiseError("Not connected");
+  const cwd = ui('cwd').textContent;
+  let file = (cwd === '/' ? '' : cwd) + '/' + ui('send-file-name').value;
+  if (file.endsWith("/"))
+    file = file.substring(0,file.length-1);
+  const result = await mPyDevice.executeCode(`import os\nos.mkdir('${file}')\n`);
+  if (result)
+    popup(result);
+  else
+    await populateFileList();
 }
 
 async function saveFileToDevice(fileName: string, putData: string | Uint8Array = code.getValue()) {
@@ -618,7 +636,7 @@ async function getFileFromDevice(fileName: string) {
     const data = await mPyDevice!.getFile(fileName, (length) => progress.update('Read ' + fileName + ', ' + length + ' bytes'));
     const cwd = ui('cwd').textContent;
     const fullName = (cwd === '/' ? '':cwd) + '/' + fileName;
-    createTab('\uD83C\uDC61 ' + fullName, new TextDecoder().decode(data));
+    createTab('repl',fullName, new TextDecoder().decode(data));
     progress.close();
   } catch (ex) {
     progress.update(ex + ' ' + fileName);
@@ -626,12 +644,13 @@ async function getFileFromDevice(fileName: string) {
 }
 
 let lastTab: number;
-function createTab(name?: string, content = code.getValue()) {
+const icons = {repl:'\uD83C\uDC61',local:'\uD83D\uDDA5',none:''};
+function createTab(device: 'repl' | 'local' | 'none', name?: string, content = code.getValue()) {
   if (!name) {
-    while (document.getElementById('tab:Unsaved ' + lastTab)) lastTab += 1;
+    while (document.getElementById('tab:none:Unsaved ' + lastTab)) lastTab += 1;
     name = `Unsaved ${lastTab++}`
   }
-  const existingTab = document.getElementById('tab:' + name) as HTMLTab;
+  const existingTab = document.getElementById('tab:' + device + ':' + name) as HTMLTab;
   if (existingTab) {
     existingTab.saved = content;
     if (!existingTab.classList.contains('selected'))
@@ -640,8 +659,8 @@ function createTab(name?: string, content = code.getValue()) {
   }
 
   const tab = document.createElement('span') as HTMLTab;
-  tab.id = 'tab:' + name;
-  tab.innerHTML = `${name} <span class="close">&#215;</span>`;
+  tab.id = 'tab:' + device + ':' + name;
+  tab.innerHTML = `<span>${icons[device]}</span> <span>${name}</span> <span class="close">&#215;</span>`;
   tab.saved = content;
   tab.onclick = tab.select = function (ev?: MouseEvent) {
     ev?.preventDefault();
@@ -655,6 +674,11 @@ function createTab(name?: string, content = code.getValue()) {
       }
       this.classList.add('selected');
       code.setValue(this.saved || '');
+      const path = this.id.split(':');
+      if (path[1] === 'none')
+        ui('send-file-name').value = '';
+      else if (path[2])
+        ui('send-file-name').value = path[2];
     }
     if (ev)
       code.focus();
@@ -667,7 +691,7 @@ function createTab(name?: string, content = code.getValue()) {
     if (next?.select)
       next.select();
     else
-      createTab();
+      createTab('none');
   };
 
   ui('tabs').append(tab);
@@ -697,14 +721,15 @@ Object.assign(exports,{
   getFileFromDevice,
   saveFileToDevice,
   deleteFile,
+  createDirectory,
   navigateFiles,
 
   getHelp,
   startConnect,
   runCode,
-  ControlC,
+  ControlC
 
-  createTab
+  //createTab
 });
 /*
 function get_ver() {
